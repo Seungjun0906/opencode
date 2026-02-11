@@ -83,6 +83,7 @@ function init() {
     },
     slashes() {
       return visibleOptions().flatMap((option) => {
+        if (option.disabled) return []
         const slash = option.slash
         if (!slash) return []
         return {

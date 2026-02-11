@@ -3840,6 +3840,51 @@ export type PermissionRespondResponses = {
 
 export type PermissionRespondResponse = PermissionRespondResponses[keyof PermissionRespondResponses]
 
+export type SessionHandoffData = {
+  body?: {
+    model: {
+      providerID: string
+      modelID: string
+    }
+    goal?: string
+  }
+  path: {
+    /**
+     * Session ID
+     */
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/session/{sessionID}/handoff"
+}
+
+export type SessionHandoffErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionHandoffError = SessionHandoffErrors[keyof SessionHandoffErrors]
+
+export type SessionHandoffResponses = {
+  /**
+   * Handoff data extracted
+   */
+  200: {
+    text: string
+    files: Array<string>
+  }
+}
+
+export type SessionHandoffResponse = SessionHandoffResponses[keyof SessionHandoffResponses]
+
 export type PermissionReplyData = {
   body?: {
     reply: "once" | "always" | "reject"

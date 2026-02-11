@@ -7,6 +7,7 @@ import { MessageV2 } from "../../session/message-v2"
 import { SessionPrompt } from "../../session/prompt"
 import { SessionCompaction } from "../../session/compaction"
 import { SessionRevert } from "../../session/revert"
+import { SessionHandoff } from "../../session/handoff"
 import { SessionStatus } from "@/session/status"
 import { SessionSummary } from "@/session/summary"
 import { Todo } from "../../session/todo"
@@ -931,6 +932,42 @@ export const SessionRoutes = lazy(() =>
           reply: c.req.valid("json").response,
         })
         return c.json(true)
+      },
+    )
+    .post(
+      "/:sessionID/handoff",
+      describeRoute({
+        summary: "Handoff session",
+        description: "Extract context and relevant files for another agent to continue the conversation.",
+        operationId: "session.handoff",
+        responses: {
+          200: {
+            description: "Handoff data extracted",
+            content: {
+              "application/json": {
+                schema: resolver(z.object({ text: z.string(), files: z.string().array() })),
+              },
+            },
+          },
+          ...errors(400, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: z.string().meta({ description: "Session ID" }),
+        }),
+      ),
+      validator("json", SessionHandoff.handoff.schema.omit({ sessionID: true })),
+      async (c) => {
+        const params = c.req.valid("param")
+        const body = c.req.valid("json")
+        const result = await SessionHandoff.handoff({
+          sessionID: params.sessionID,
+          model: body.model,
+          goal: body.goal,
+        })
+        return c.json(result)
       },
     ),
 )

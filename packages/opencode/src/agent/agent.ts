@@ -184,6 +184,18 @@ export namespace Agent {
         ),
         prompt: PROMPT_TITLE,
       },
+      handoff: {
+        name: "handoff",
+        mode: "primary",
+        options: {},
+        native: true,
+        hidden: true,
+        temperature: 0.5,
+        permission: PermissionNext.fromConfig({
+          "*": "allow",
+        }),
+        prompt: "none",
+      },
       summary: {
         name: "summary",
         mode: "primary",

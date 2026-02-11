@@ -110,6 +110,8 @@ import type {
   SessionForkResponses,
   SessionGetErrors,
   SessionGetResponses,
+  SessionHandoffErrors,
+  SessionHandoffResponses,
   SessionInitErrors,
   SessionInitResponses,
   SessionListResponses,
@@ -1764,6 +1766,48 @@ export class Session extends HeyApiClient {
       url: "/session/{sessionID}/unrevert",
       ...options,
       ...params,
+    })
+  }
+
+  /**
+   * Handoff session
+   *
+   * Extract context and relevant files for another agent to continue the conversation.
+   */
+  public handoff<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      model?: {
+        providerID: string
+        modelID: string
+      }
+      goal?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "body", key: "model" },
+            { in: "body", key: "goal" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionHandoffResponses, SessionHandoffErrors, ThrowOnError>({
+      url: "/session/{sessionID}/handoff",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 }
