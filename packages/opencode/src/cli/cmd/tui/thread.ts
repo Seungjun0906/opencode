@@ -9,6 +9,7 @@ import { Log } from "@/util/log"
 import { withNetworkOptions, resolveNetworkOptions } from "@/cli/network"
 import type { Event } from "@opencode-ai/sdk/v2"
 import type { EventSource } from "./context/sdk"
+import { win32DisableProcessedInput, win32InstallCtrlCGuard } from "./win32"
 
 declare global {
   const OPENCODE_WORKER_PATH: string
@@ -77,6 +78,14 @@ export const TuiThreadCommand = cmd({
         describe: "agent to use",
       }),
   handler: async (args) => {
+    // Keep ENABLE_PROCESSED_INPUT cleared even if other code flips it.
+    // (Important when running under `bun run` wrappers on Windows.)
+    win32InstallCtrlCGuard()
+
+    // Must be the very first thing — disables CTRL_C_EVENT before any Worker
+    // spawn or async work so the OS cannot kill the process group.
+    win32DisableProcessedInput()
+
     if (args.fork && !args.continue && !args.session) {
       UI.error("--fork requires --continue or --session")
       process.exit(1)

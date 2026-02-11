@@ -23,6 +23,7 @@ import { AttachCommand } from "./cli/cmd/tui/attach"
 import { TuiThreadCommand } from "./cli/cmd/tui/thread"
 import { AcpCommand } from "./cli/cmd/acp"
 import { EOL } from "os"
+import { win32DisableProcessedInput, win32IgnoreCtrlC } from "./cli/cmd/tui/win32"
 import { WebCommand } from "./cli/cmd/web"
 import { PrCommand } from "./cli/cmd/pr"
 import { SessionCommand } from "./cli/cmd/session"
@@ -42,6 +43,14 @@ process.on("uncaughtException", (e) => {
     e: e instanceof Error ? e.message : e,
   })
 })
+
+// Disable Windows CTRL_C_EVENT as early as possible. When running under
+// `bun run` (e.g. `bun dev`), the parent bun process shares this console
+// and would be killed by the OS before any JS signal handler fires.
+win32DisableProcessedInput()
+// Belt-and-suspenders: even if something re-enables ENABLE_PROCESSED_INPUT
+// later (opentui raw mode, libuv, etc.), ignore the generated event.
+win32IgnoreCtrlC()
 
 const cli = yargs(hideBin(process.argv))
   .parserConfiguration({ "populate--": true })
