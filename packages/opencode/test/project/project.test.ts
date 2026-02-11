@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Project } from "../../src/project/project"
 import { Log } from "../../src/util/log"
-import { Storage } from "../../src/storage/storage"
 import { $ } from "bun"
 import path from "path"
 import { tmpdir } from "../fixture/fixture"
@@ -55,37 +54,50 @@ describe("Project.fromDirectory with worktrees", () => {
   test("should set worktree to root when called from a worktree", async () => {
     await using tmp = await tmpdir({ git: true })
 
-    const worktreePath = path.join(tmp.path, "..", "worktree-test")
-    await $`git worktree add ${worktreePath} -b test-branch`.cwd(tmp.path).quiet()
+    const worktreePath = path.join(tmp.path, "..", path.basename(tmp.path) + "-worktree")
+    try {
+      await $`git worktree add ${worktreePath} -b test-branch-${Date.now()}`.cwd(tmp.path).quiet()
 
-    const { project, sandbox } = await Project.fromDirectory(worktreePath)
+      const { project, sandbox } = await Project.fromDirectory(worktreePath)
 
-    expect(project.worktree).toBe(tmp.path)
-    expect(sandbox).toBe(worktreePath)
-    expect(project.sandboxes).toContain(worktreePath)
-    expect(project.sandboxes).not.toContain(tmp.path)
-
-    await $`git worktree remove ${worktreePath}`.cwd(tmp.path).quiet()
+      expect(project.worktree).toBe(tmp.path)
+      expect(sandbox).toBe(worktreePath)
+      expect(project.sandboxes).toContain(worktreePath)
+      expect(project.sandboxes).not.toContain(tmp.path)
+    } finally {
+      await $`git worktree remove ${worktreePath}`
+        .cwd(tmp.path)
+        .quiet()
+        .catch(() => {})
+    }
   })
 
   test("should accumulate multiple worktrees in sandboxes", async () => {
     await using tmp = await tmpdir({ git: true })
 
-    const worktree1 = path.join(tmp.path, "..", "worktree-1")
-    const worktree2 = path.join(tmp.path, "..", "worktree-2")
-    await $`git worktree add ${worktree1} -b branch-1`.cwd(tmp.path).quiet()
-    await $`git worktree add ${worktree2} -b branch-2`.cwd(tmp.path).quiet()
+    const worktree1 = path.join(tmp.path, "..", path.basename(tmp.path) + "-wt1")
+    const worktree2 = path.join(tmp.path, "..", path.basename(tmp.path) + "-wt2")
+    try {
+      await $`git worktree add ${worktree1} -b branch-${Date.now()}`.cwd(tmp.path).quiet()
+      await $`git worktree add ${worktree2} -b branch-${Date.now() + 1}`.cwd(tmp.path).quiet()
 
-    await Project.fromDirectory(worktree1)
-    const { project } = await Project.fromDirectory(worktree2)
+      await Project.fromDirectory(worktree1)
+      const { project } = await Project.fromDirectory(worktree2)
 
-    expect(project.worktree).toBe(tmp.path)
-    expect(project.sandboxes).toContain(worktree1)
-    expect(project.sandboxes).toContain(worktree2)
-    expect(project.sandboxes).not.toContain(tmp.path)
-
-    await $`git worktree remove ${worktree1}`.cwd(tmp.path).quiet()
-    await $`git worktree remove ${worktree2}`.cwd(tmp.path).quiet()
+      expect(project.worktree).toBe(tmp.path)
+      expect(project.sandboxes).toContain(worktree1)
+      expect(project.sandboxes).toContain(worktree2)
+      expect(project.sandboxes).not.toContain(tmp.path)
+    } finally {
+      await $`git worktree remove ${worktree1}`
+        .cwd(tmp.path)
+        .quiet()
+        .catch(() => {})
+      await $`git worktree remove ${worktree2}`
+        .cwd(tmp.path)
+        .quiet()
+        .catch(() => {})
+    }
   })
 })
 
@@ -99,11 +111,12 @@ describe("Project.discover", () => {
 
     await Project.discover(project)
 
-    const updated = await Storage.read<Project.Info>(["project", project.id])
-    expect(updated.icon).toBeDefined()
-    expect(updated.icon?.url).toStartWith("data:")
-    expect(updated.icon?.url).toContain("base64")
-    expect(updated.icon?.color).toBeUndefined()
+    const updated = Project.get(project.id)
+    expect(updated).toBeDefined()
+    expect(updated!.icon).toBeDefined()
+    expect(updated!.icon?.url).toStartWith("data:")
+    expect(updated!.icon?.url).toContain("base64")
+    expect(updated!.icon?.color).toBeUndefined()
   })
 
   test("should not discover non-image files", async () => {
@@ -114,7 +127,8 @@ describe("Project.discover", () => {
 
     await Project.discover(project)
 
-    const updated = await Storage.read<Project.Info>(["project", project.id])
-    expect(updated.icon).toBeUndefined()
+    const updated = Project.get(project.id)
+    expect(updated).toBeDefined()
+    expect(updated!.icon).toBeUndefined()
   })
 })
